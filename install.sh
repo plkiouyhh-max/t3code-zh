@@ -57,12 +57,16 @@ cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 
 # ---------- 备份原始 asar（首次安装或版本变化时） ----------
+# 判定一个 asar 是否"已经是打过补丁的"：新版本用 <!-- t3zh:start --> 注释标记，
+# 早期版本用 __t3zhLoaded 全局变量。两个都要查，否则会把汉化版误当成官方版。
+is_patched() {
+  grep -a -q -e "t3zh:start" -e "__t3zhLoaded" "$1" 2>/dev/null
+}
+
 mkdir -p "$BACKUP"
 BK="$BACKUP/app-$VER.asar"
 if [ ! -f "$BK" ]; then
-  # 只有在源包"干净"时才备份，否则会把已汉化的版本当成原版存下来，
-  # 以后就再也回不到官方版了。
-  if npx --yes @electron/asar extract-file "$SRC" apps/server/dist/client/index.html 2>/dev/null | grep -q "t3zh:start"; then
+  if is_patched "$SRC"; then
     echo "✗ 当前安装已经是打过补丁的版本，没有可用的干净备份。"
     echo "  请先从 https://github.com/pingdotgg/t3code/releases 重装官方版 $VER，再运行本脚本。"
     exit 1
@@ -141,6 +145,11 @@ codesign --verify --deep --strict "$STAGE" 2>/dev/null || { echo "✗ 签名校�
 # ---------- 替换 ----------
 echo "==> 替换应用"
 OLD="$BACKUP/replaced-$(date +%Y%m%d-%H%M%S).app"
+# 只有当被替换的是"官方原版"时才值得留一份完整副本（可保留官方签名）。
+# 若它本身已是汉化版，留着没用，还会白占 460MB。
+KEEP_OLD=1
+is_patched "$SRC" && KEEP_OLD=0
+
 mv "$APP" "$OLD"
 if ! ditto "$STAGE" "$APP"; then
   echo "✗ 复制失败，正在回滚"
@@ -149,7 +158,12 @@ if ! ditto "$STAGE" "$APP"; then
   exit 1
 fi
 
-echo "==> 完成（原应用已保存到 $OLD）"
+if [ "$KEEP_OLD" = "1" ]; then
+  echo "==> 完成（原官方版已保存到 $OLD）"
+else
+  rm -rf "$OLD"
+  echo "==> 完成（原安装已是汉化版，未保留副本）"
+fi
 
 if [ "$LAUNCH" = "1" ]; then
   echo "==> 启动"

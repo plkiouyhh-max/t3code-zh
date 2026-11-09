@@ -44,7 +44,17 @@ pkill -9 -f "T3 Code" 2>/dev/null || true
 sleep 1
 
 # 方案一：用安装时保存的完整原始 app（签名完好）
-ORIG=$(ls -dt "$BACKUP"/replaced-*.app 2>/dev/null | head -1 || true)
+# 要挑"干净"的那份——备份目录里可能也有之前替换下来的汉化版，回退到汉化版没有意义。
+ORIG=""
+for c in $(ls -dt "$BACKUP"/replaced-*.app 2>/dev/null); do
+  a="$c/Contents/Resources/app.asar"
+  [ -f "$a" ] || continue
+  if ! grep -a -q -e "t3zh:start" -e "__t3zhLoaded" "$a" 2>/dev/null; then
+    ORIG="$c"
+    break
+  fi
+done
+
 if [ -n "$ORIG" ] && [ -d "$ORIG" ]; then
   echo "==> 从 $ORIG 还原（保留官方签名）"
   TMP="$APP.t3zh-restore"
@@ -56,6 +66,8 @@ if [ -n "$ORIG" ] && [ -d "$ORIG" ]; then
   env -u ELECTRON_RUN_AS_NODE open -a "$APP" 2>/dev/null || true
   exit 0
 fi
+
+echo "==> 没有找到干净的完整副本，改用 asar 还原"
 
 # 方案二：用备份的 asar 还原，再重签名
 BK="$BACKUP/app-$VER.asar"
