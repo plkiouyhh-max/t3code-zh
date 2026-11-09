@@ -1,0 +1,26 @@
+NOTICE
+======
+
+This repository contains a localization patch for T3 Code.
+
+Upstream project : T3 Code (https://github.com/pingdotgg/t3code)
+Upstream author  : T3 Tools, Inc.
+Upstream license : MIT
+
+This repository does NOT contain, redistribute, or bundle:
+  - any T3 Code binary (.app, .dmg, .exe, .AppImage)
+  - any T3 Code application bundle (app.asar)
+  - any copy of the upstream source code
+
+It contains only:
+  - shell/Node scripts that modify a copy already present on the user's machine
+  - a translation data file (English UI string -> Simplified Chinese)
+  - a small runtime text-substitution script
+
+The English UI strings stored as keys in data/translations.json originate from
+T3 Code and remain the property of T3 Tools, Inc. under the MIT license.
+The Simplified Chinese translations are contributed by this project's
+contributors and are released under the MIT license (see LICENSE).
+
+"T3 Code" is used here only to describe compatibility. This project is not
+affiliated with, endorsed by, or sponsored by T3 Tools, Inc.
