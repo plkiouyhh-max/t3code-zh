@@ -5,7 +5,7 @@
 不改源码、不重新分发二进制 —— 这是一套**补丁脚本 + 翻译表**，在你的机器上就地给官方安装包打上中文，
 并且随时可以一键还原。
 
-> 上游项目：`pingdotgg/t3code`（MIT）· 本补丁的适用版本：**0.1.7 (Beta)**
+> 上游项目：`pingdotgg/t3code`（MIT）· 本补丁的适用版本：**0.1.8 (Beta)**
 > 上游没有 i18n 框架，所以这不是"官方中文版"，是第三方文本替换层。
 
 ---
@@ -58,14 +58,62 @@ sh uninstall.sh
 
 ## 应用更新后
 
-T3 Code 是日更节奏，更新会覆盖掉补丁。**重跑一次即可**：
+T3 Code 是日更节奏。但**打完补丁后，应用内的自动更新会失效**，原因见下节。
+
+请用自带的更新脚本：
 
 ```sh
-sh install.sh
+sh update.sh              # 更新到最新版
+sh update.sh 0.1.8        # 装指定版本
+sh update.sh --check      # 只检查有没有新版
 ```
 
-如果你的版本和翻译表对应的版本不同，可能会出现少量新增文案仍是英文 —— 这是正常的，
-欢迎提 issue 或 PR 补词条。
+它会：查最新版 → 下载官方包 → 校验 sha256 → 替换应用 → 重新打补丁。
+
+### 为什么应用内更新会失败
+
+Electron 用 Squirrel 做增量更新。Squirrel 安装前会验证新包的代码签名
+**必须与当前运行的应用属于同一个 Team ID**。
+
+补丁需要重新签名（改了 asar，原签名必然失效），而本地只能做 ad-hoc 签名，
+`TeamIdentifier` 为空。于是：
+
+```
+当前应用：Identifier=com.t3tools.t3code, TeamIdentifier=not set
+官方新包：Identifier=com.t3tools.t3code, TeamIdentifier=ARK85ZXQ4Z
+          → 不匹配，Squirrel 拒绝安装
+```
+
+典型表现是**更新包下载完成了，但版本号没变**，或者反复提示有新版却装不上。
+包其实已经躺在 `~/Library/Caches/t3code-updater/update.zip`，只是装不进去。
+
+这是 ad-hoc 签名的固有限制，不是脚本的 bug —— 任何修改过 asar 的方案都一样。
+
+**如果你想让自动更新恢复正常**：先 `sh uninstall.sh` 还原官方版，更新完再打补丁。
+但这样一来每次更新都要手动两次，不如直接用 `update.sh`。
+
+---
+
+## 仓库结构
+
+```
+t3code-zh/
+├── README.md              本文件
+├── LICENSE                MIT（补丁部分）
+├── NOTICE                 与上游的关系声明
+├── install.sh             首次安装 / 更新后重打补丁
+├── update.sh              一键更新到上游新版（含重新打补丁）
+├── uninstall.sh           还原官方版
+├── data/
+│   └── translations.json  8270 条译文（英文原文 -> 中文）
+├── runtime/
+│   └── zh-runtime.js      运行时文本替换引擎
+└── scripts/
+    ├── build-inject.mjs   把译文表合进运行时引擎
+    ├── patch-labels.mjs   改写原生菜单标签（打包期）
+    ├── patch-index.mjs    把运行时引擎注入 index.html
+    └── entitlements.plist 重新签名用的权限声明
+```
 
 ---
 
@@ -77,7 +125,7 @@ sh install.sh
 |---|---|---|
 | **打包期：菜单标签** | 改写 `assets/*.js` 里 `label:` 后的字符串 | macOS 原生右键菜单、应用菜单栏 |
 | **运行时：文本替换** | 在 `index.html` 注入脚本，改渲染后的文本节点 | 页面正文、按钮、提示、设置页 |
-| **数据：翻译表** | `data/translations.json`，8175 条 | 上面两层共用 |
+| **数据：翻译表** | `data/translations.json`，8270 条 | 上面两层共用 |
 
 **为什么分两层**：macOS 的原生菜单由系统 API 绘制，不经过 DOM，运行时替换碰不到它；
 反过来，把中文写进代码逻辑又可能破坏协议（比如被用作 HTTP 头的字符串，非 ISO-8859-1 会直接抛错）。
@@ -90,7 +138,7 @@ sh install.sh
 ## 已知限制
 
 - **只支持 macOS**（Windows / Linux 版路径结构不同）
-- **ad-hoc 签名**：应用更新或重装后需要重新授权钥匙串；也无法通过 Gatekeeper 的公证检查
+- **ad-hoc 签名**：应用内自动更新会失效（见上节），必须用 `update.sh`；钥匙串每次重签都要重新授权；无法通过 Gatekeeper 公证
 - **不是真正的国际化**：新增文案需要手工补词条，不会自动跟随上游
 - **长尾覆盖**：日常界面基本干净；极深层的异常提示、部分第三方集成说明可能仍是英文
 - **不分发二进制**：仓库里没有 `.app` 或 `.asar`，只有脚本和数据
