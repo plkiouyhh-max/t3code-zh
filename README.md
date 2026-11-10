@@ -62,7 +62,7 @@ sh update.sh --check      # 只看有没有新版
 需要：macOS、已安装 T3 Code 桌面版、Node.js（`node` 和 `npx` 可用）。
 
 ```sh
-git clone https://github.com/<your-name>/t3code-zh.git
+git clone https://github.com/plkiouyhh-max/t3code-zh.git
 cd t3code-zh
 sh install.sh
 ```
@@ -74,7 +74,7 @@ sh install.sh "/Applications/T3 Code (Beta).app"
 sh install.sh --no-launch          # 装完不自动启动
 ```
 
-全过程大约 2-4 分钟（要解包并重新打包 137MB 的资源）。原应用会备份到
+全过程大约 1-3 分钟（要解包并重新打包约 180MB 的资源）。原应用会备份到
 `~/.t3code-zh/backup/`。
 
 **第一次打开会要求输入登录密码** —— 因为补丁后要重新签名（ad-hoc），macOS 认为
