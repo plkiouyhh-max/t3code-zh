@@ -10,6 +10,43 @@
 
 ---
 
+## ⚠️ 先读这一条：签名与自动更新
+
+打完补丁后，**应用内的自动更新会失效**。这是 ad-hoc 签名的必然结果，不是本项目的 bug。
+
+Electron 用 Squirrel 做更新，安装前会校验新包的代码签名**必须与当前应用同属一个 Team ID**：
+
+| | Identifier | TeamIdentifier |
+|---|---|---|
+| 当前应用（补丁后） | `com.t3tools.t3code` | **not set**（ad-hoc） |
+| 官方新包 | `com.t3tools.t3code` | `ARK85ZXQ4Z`（T3 Tools, Inc.） |
+
+不匹配 → Squirrel 拒绝安装。典型表现：
+
+- **更新包已经下载完成，但版本号始终不变**
+- 点"检查更新"反复提示有新版本，却装不上
+- 弹出**英文**错误（Squirrel 抛出的系统消息，被应用原样透传显示）
+- 包其实已躺在 `~/Library/Caches/t3code-updater/update.zip`，只是装不进去
+
+**所以更新请用本项目自带的脚本，不要点应用内的"检查更新"**：
+
+```sh
+sh update.sh              # 更新到最新版
+sh update.sh --check      # 只看有没有新版
+```
+
+它会自己下载官方包 → 校验 sha256 → 替换 → 重新打补丁，绕开 Squirrel。
+
+其他由签名带来的影响：
+
+- 每次重装/更新后，首次打开会要求输入登录密码（钥匙串授权）。点「始终允许」。
+- 无法通过 Gatekeeper 公证检查。首次打开若被拦，右键 →「打开」。
+- 代码完整性保护被削弱。**涉密机器或生产环境不建议使用。**
+
+如果你需要自动更新保持可用，就别用这个补丁，或者每次 `sh uninstall.sh` 还原后再更新。
+
+---
+
 ## 效果
 
 界面主体、菜单、设置页、提示语、审批卡片基本都是中文。**代码、diff、终端输出、文件内容保持原样**
@@ -56,41 +93,22 @@ sh uninstall.sh
 
 ---
 
-## 应用更新后
+## 更新
 
-T3 Code 是日更节奏。但**打完补丁后，应用内的自动更新会失效**，原因见下节。
-
-请用自带的更新脚本：
+T3 Code 是日更节奏。**不要点应用内的"检查更新"**（会失败，原因见开头），用自带的脚本：
 
 ```sh
 sh update.sh              # 更新到最新版
-sh update.sh 0.1.8        # 装指定版本
+sh update.sh 0.1.9        # 装指定版本
 sh update.sh --check      # 只检查有没有新版
 ```
 
-它会：查最新版 → 下载官方包 → 校验 sha256 → 替换应用 → 重新打补丁。
+流程：查最新版 → 下载官方包 → 校验 sha256 → 替换应用 → 重新打补丁。
 
-### 为什么应用内更新会失败
+也可以用 `--check` 先看看有没有新版再决定，不更新不影响使用。
 
-Electron 用 Squirrel 做增量更新。Squirrel 安装前会验证新包的代码签名
-**必须与当前运行的应用属于同一个 Team ID**。
-
-补丁需要重新签名（改了 asar，原签名必然失效），而本地只能做 ad-hoc 签名，
-`TeamIdentifier` 为空。于是：
-
-```
-当前应用：Identifier=com.t3tools.t3code, TeamIdentifier=not set
-官方新包：Identifier=com.t3tools.t3code, TeamIdentifier=ARK85ZXQ4Z
-          → 不匹配，Squirrel 拒绝安装
-```
-
-典型表现是**更新包下载完成了，但版本号没变**，或者反复提示有新版却装不上。
-包其实已经躺在 `~/Library/Caches/t3code-updater/update.zip`，只是装不进去。
-
-这是 ad-hoc 签名的固有限制，不是脚本的 bug —— 任何修改过 asar 的方案都一样。
-
-**如果你想让自动更新恢复正常**：先 `sh uninstall.sh` 还原官方版，更新完再打补丁。
-但这样一来每次更新都要手动两次，不如直接用 `update.sh`。
+如果坚持要恢复应用内自动更新：`sh uninstall.sh` 还原官方版后再更新，然后重新打补丁。
+但这样每次要手动两步，不如直接用 `update.sh`。
 
 ---
 
